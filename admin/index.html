@@ -47,6 +47,8 @@
   --shadow:0 1px 2px rgba(0,0,0,.4);
 }
 *{box-sizing:border-box;margin:0;padding:0}
+/* display を持つ要素にも hidden を効かせる（.login は display:flex のため必須） */
+[hidden]{display:none!important}
 html,body{background:var(--bg)}
 body{font-family:var(--sans);color:var(--ink);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
@@ -680,7 +682,9 @@ $('userQuery').addEventListener('keydown', e => { if (e.key === 'Enter') $('user
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 
 loadSession();
-if (session) enterApp().catch(() => { saveSession(null); showLogin(); });
+if (location.protocol === 'file:') {
+  showLogin('このファイルを直接開くと、ブラウザが外部との通信を遮断するためログインできません。公開URL https://shuto20.github.io/oshi-radar-legal/admin/ を開いてください。');
+} else if (session) enterApp().catch(() => { saveSession(null); showLogin(); });
 else showLogin();
 </script>
 </body>
