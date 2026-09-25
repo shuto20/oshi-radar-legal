@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>推しレーダー 管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme: light;
+  --bg:#FFFFFF; --soft:#F6F6F7; --surface:#FFFFFF;
+  --ink:#17171A; --inkSub:#6B6B73; --inkMuted:#9A9AA2; --onInk:#FFFFFF;
+  --line:#ECECEF; --lineStrong:#DCDCE1;
+  --accent:#3E5C76; --accentSoft:#EEF2F6;
+  --success:#3F7A5E; --successSoft:#EAF3EE;
+  --warning:#A9812B; --warningSoft:#F6F1E4;
+  --danger:#B23B32; --dangerSoft:#FBEFEE;
+  --shadow:0 1px 2px rgba(23,23,26,.05);
+  --sans:"Noto Sans JP", system-ui, -apple-system, "Hiragino Sans", "Meiryo", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#131418; --soft:#1B1D22; --surface:#191B20;
+    --ink:#E9E9EE; --inkSub:#A3A4AC; --inkMuted:#7C7E87; --onInk:#131418;
+    --line:#282B32; --lineStrong:#373B44;
+    --accent:#8FB2CE; --accentSoft:#1E2833;
+    --success:#7BB394; --successSoft:#17251E;
+    --warning:#D3AC62; --warningSoft:#26200F;
+    --danger:#E0857C; --dangerSoft:#2A1917;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#131418; --soft:#1B1D22; --surface:#191B20;
+  --ink:#E9E9EE; --inkSub:#A3A4AC; --inkMuted:#7C7E87; --onInk:#131418;
+  --line:#282B32; --lineStrong:#373B44;
+  --accent:#8FB2CE; --accentSoft:#1E2833;
+  --success:#7BB394; --successSoft:#17251E;
+  --warning:#D3AC62; --warningSoft:#26200F;
+  --danger:#E0857C; --dangerSoft:#2A1917;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg)}
+body{font-family:var(--sans);color:var(--ink);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
+input,select{font:inherit;color:inherit}
+.mono{font-family:var(--mono);font-size:.85em}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- 骨格 ---------- */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);
+  border-bottom:1px solid var(--line);padding-block:10px}
+.bar{max-width:1100px;margin:0 auto;padding-inline:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{font-weight:700;letter-spacing:-.3px;font-size:15px}
+.brand span{color:var(--inkMuted);font-weight:500;margin-left:8px;font-size:12px}
+.spacer{margin-left:auto}
+.who{font-size:12px;color:var(--inkSub)}
+.tabs{max-width:1100px;margin:0 auto;padding-inline:16px;display:flex;gap:2px;overflow-x:auto}
+.tabs button{padding:9px 12px;font-size:13px;font-weight:500;color:var(--inkSub);
+  border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
+main{max-width:1100px;margin:0 auto;padding-inline:16px;padding-block:20px 64px}
+section[hidden]{display:none!important}
+h2{font-size:15px;font-weight:700;letter-spacing:-.2px;margin-bottom:10px}
+h2 .sub{font-weight:400;font-size:12px;color:var(--inkMuted);margin-left:8px}
+
+/* ---------- 部品 ---------- */
+.btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:8px;
+  border:1px solid var(--lineStrong);background:var(--surface);font-size:12.5px;font-weight:600;white-space:nowrap}
+.btn:hover{background:var(--soft)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--onInk)}
+.btn.primary:hover{opacity:.9;background:var(--ink)}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.danger:hover{background:var(--dangerSoft)}
+.btn.sm{height:28px;padding:0 9px;font-size:11.5px;border-radius:6px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;font-weight:700}
+.input{height:40px;padding:0 12px;border-radius:9px;border:1px solid var(--lineStrong);
+  background:var(--surface);width:100%}
+.input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;
+  font-size:11px;font-weight:700;white-space:nowrap}
+.pill.admin{background:var(--accentSoft);color:var(--accent)}
+.pill.mod{background:var(--warningSoft);color:var(--warning)}
+.pill.premium{background:var(--warningSoft);color:var(--warning)}
+.pill.ban{background:var(--dangerSoft);color:var(--danger)}
+.pill.hidden{background:var(--dangerSoft);color:var(--danger)}
+.pill.ok{background:var(--successSoft);color:var(--success)}
+.muted{color:var(--inkMuted);font-size:12px}
+.empty{padding:40px 16px;text-align:center;color:var(--inkMuted);font-size:13px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:50;
+  background:var(--ink);color:var(--onInk);padding:10px 16px;border-radius:10px;font-size:13px;
+  box-shadow:0 6px 24px rgba(0,0,0,.2);max-width:calc(100% - 32px)}
+
+/* ---------- ログイン ---------- */
+.login{max-width:380px;margin:12vh auto 0;display:flex;flex-direction:column;gap:14px}
+.login .card{padding:22px;display:flex;flex-direction:column;gap:14px}
+.login h1{font-size:19px;letter-spacing:-.4px}
+.err{background:var(--dangerSoft);color:var(--danger);padding:9px 12px;border-radius:8px;font-size:12.5px}
+
+/* ---------- 統計 ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+.kpi{padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.kpi .k{font-size:11.5px;color:var(--inkSub);font-weight:500}
+.kpi .v{font-size:26px;font-weight:700;letter-spacing:-.8px;margin-top:2px;line-height:1.1}
+.kpi .d{font-size:11.5px;color:var(--inkMuted);margin-top:2px}
+.kpi.alert .v{color:var(--danger)}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:18px}
+.chartbox{padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.chartbox h3{font-size:12.5px;font-weight:700;margin-bottom:2px}
+.chartbox .read{font-size:11.5px;color:var(--inkMuted);min-height:18px}
+svg{display:block;width:100%;height:auto;touch-action:none}
+.links{display:flex;flex-wrap:wrap;gap:8px}
+.links a{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:8px;
+  border:1px solid var(--lineStrong);font-size:12.5px;font-weight:600;color:var(--ink);text-decoration:none}
+.links a:hover{background:var(--soft)}
+
+/* ---------- 表 ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{text-align:left;font-size:11px;color:var(--inkSub);font-weight:700;padding:9px 12px;
+  border-bottom:1px solid var(--line);white-space:nowrap;background:var(--soft)}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+
+/* ---------- 通報 ---------- */
+.report{display:flex;gap:12px;padding:14px;align-items:flex-start}
+.report + .report{border-top:1px solid var(--line)}
+.thumb{width:72px;height:72px;border-radius:10px;object-fit:cover;background:var(--soft);flex:none}
+.thumb.none{display:flex;align-items:center;justify-content:center;color:var(--inkMuted);font-size:11px}
+.report .body{flex:1;min-width:0}
+.report .title{font-weight:700;font-size:13.5px}
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.searchrow{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.searchrow .input{flex:1;min-width:200px}
+.rowactions{display:flex;gap:5px;flex-wrap:wrap}
+
+/* ---------- 確認ダイアログ ---------- */
+.scrim{position:fixed;inset:0;background:rgba(23,23,26,.5);z-index:40;display:flex;
+  align-items:center;justify-content:center;padding:16px}
+.dialog{background:var(--surface);border-radius:14px;padding:20px;max-width:380px;width:100%;
+  display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.dialog h3{font-size:15px;font-weight:700}
+.dialog p{font-size:13px;color:var(--inkSub)}
+.dialog .row{display:flex;gap:8px;justify-content:flex-end}
+</style>
+</head>
+<body>
+
+<!-- ========== ログイン ========== -->
+<div class="login" id="login">
+  <div class="card">
+    <h1>推しレーダー 管理</h1>
+    <p class="muted">管理者権限のあるアカウントでログインしてください。</p>
+    <div class="field">
+      <label for="email">メールアドレス</label>
+      <input class="input" id="email" type="email" autocomplete="username" placeholder="admin@example.com">
+    </div>
+    <div class="field">
+      <label for="password">パスワード</label>
+      <input class="input" id="password" type="password" autocomplete="current-password" placeholder="••••••••">
+    </div>
+    <div class="err" id="loginErr" hidden></div>
+    <button class="btn primary" id="loginBtn" style="height:40px;justify-content:center">ログイン</button>
+  </div>
+</div>
+
+<!-- ========== 本体 ========== -->
+<div id="app" hidden>
+  <div class="topbar">
+    <div class="bar">
+      <div class="brand">推しレーダー <span>管理コンソール</span></div>
+      <div class="spacer"></div>
+      <div class="who" id="who"></div>
+      <button class="btn sm" id="reloadBtn">再読み込み</button>
+      <button class="btn sm" id="logoutBtn">ログアウト</button>
+    </div>
+    <nav class="tabs" id="tabs" role="tablist">
+      <button role="tab" data-tab="stats" aria-selected="true">統計</button>
+      <button role="tab" data-tab="reports" aria-selected="false">通報</button>
+      <button role="tab" data-tab="users" aria-selected="false">ユーザー</button>
+      <button role="tab" data-tab="log" aria-selected="false">操作ログ</button>
+    </nav>
+  </div>
+
+  <main>
+    <!-- 統計 -->
+    <section id="tab-stats">
+      <div class="kpis" id="kpis"></div>
+      <div class="charts" id="charts"></div>
+      <h2>よく投稿されている作品 <span class="sub">投稿数の多い順</span></h2>
+      <div class="tablewrap" style="margin-bottom:18px">
+        <table><thead><tr><th>作品</th><th class="num">投稿</th><th class="num">検索</th></tr></thead>
+        <tbody id="topSeries"></tbody></table>
+      </div>
+      <h2>外部サービス <span class="sub">ダウンロード数・広告・課金はこちら</span></h2>
+      <div class="links">
+        <a href="https://play.google.com/console" target="_blank" rel="noopener">Google Play Console</a>
+        <a href="https://appstoreconnect.apple.com" target="_blank" rel="noopener">App Store Connect</a>
+        <a href="https://apps.admob.com" target="_blank" rel="noopener">AdMob</a>
+        <a href="https://app.revenuecat.com" target="_blank" rel="noopener">RevenueCat</a>
+        <a href="https://supabase.com/dashboard/project/ykycdplbvijrflryalrj" target="_blank" rel="noopener">Supabase</a>
+      </div>
+    </section>
+
+    <!-- 通報 -->
+    <section id="tab-reports" hidden>
+      <h2>通報された投稿 <span class="sub">通報3件で自動的に非表示になります</span></h2>
+      <div class="card" id="reports"></div>
+    </section>
+
+    <!-- ユーザー -->
+    <section id="tab-users" hidden>
+      <h2>ユーザー</h2>
+      <div class="searchrow">
+        <input class="input" id="userQuery" placeholder="ニックネーム・メール・ユーザーIDで検索（空欄で新しい順）">
+        <button class="btn" id="userSearch">検索</button>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th>ユーザー</th><th>状態</th><th class="num">投稿</th><th class="num">pt</th><th>操作</th>
+          </tr></thead>
+          <tbody id="users"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ログ -->
+    <section id="tab-log" hidden>
+      <h2>操作ログ <span class="sub">管理操作はすべて記録されます</span></h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>日時</th><th>実行者</th><th>操作</th><th>対象</th><th>内容</th></tr></thead>
+          <tbody id="log"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* =====================================================================
+   推しレーダー 管理コンソール
+   Supabase の REST / Auth を直接呼ぶだけの1枚もの（外部ライブラリなし）
+   権限の判定はすべてサーバー側（RLS と SECURITY DEFINER 関数）で行う。
+   このページ自体は誰が開いても、管理者アカウントでなければ何も見えない。
+   ===================================================================== */
+const SUPABASE_URL = 'https://ykycdplbvijrflryalrj.supabase.co';
+const ANON_KEY = 'sb_publishable_2d7U9FFjZ2l5UcVgKmgbog_c4PxxA-d';
+const PHOTO_BASE = SUPABASE_URL + '/storage/v1/object/public/sighting-photos/';
+const STORE_KEY = 'oshi-radar-admin-session';
+
+let session = null;   // { access_token, refresh_token, expires_at, email }
+let myRole = 'user';
+
+/* ---------- セッション ---------- */
+function loadSession(){
+  try { session = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch { session = null; }
+}
+function saveSession(s){
+  session = s;
+  try { s ? localStorage.setItem(STORE_KEY, JSON.stringify(s)) : localStorage.removeItem(STORE_KEY); } catch {}
+}
+
+async function authFetch(path, body){
+  const r = await fetch(SUPABASE_URL + path, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', apikey: ANON_KEY },
+    body: JSON.stringify(body)
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error_description || j.msg || j.message || ('エラー ' + r.status));
+  return j;
+}
+
+async function signIn(email, password){
+  const j = await authFetch('/auth/v1/token?grant_type=password', { email, password });
+  saveSession({ access_token:j.access_token, refresh_token:j.refresh_token,
+                expires_at: Date.now() + (j.expires_in - 60) * 1000, email:j.user?.email || email });
+}
+
+async function refreshIfNeeded(){
+  if (!session) throw new Error('NO_SESSION');
+  if (Date.now() < session.expires_at) return;
+  const j = await authFetch('/auth/v1/token?grant_type=refresh_token', { refresh_token: session.refresh_token });
+  saveSession({ access_token:j.access_token, refresh_token:j.refresh_token,
+                expires_at: Date.now() + (j.expires_in - 60) * 1000, email: session.email });
+}
+
+/* ---------- サーバー呼び出し ---------- */
+async function rpc(fn, args){
+  await refreshIfNeeded();
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', apikey: ANON_KEY,
+              Authorization: 'Bearer ' + session.access_token },
+    body: JSON.stringify(args || {})
+  });
+  const text = await r.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  if (!r.ok) throw new Error(jpError(data));
+  return data;
+}
+
+async function deletePhoto(path){
+  if (!path) return;
+  await refreshIfNeeded();
+  await fetch(`${SUPABASE_URL}/storage/v1/object/sighting-photos/${path}`, {
+    method:'DELETE',
+    headers:{ apikey: ANON_KEY, Authorization: 'Bearer ' + session.access_token }
+  }).catch(() => {});
+}
+
+function jpError(d){
+  const m = (d && (d.message || d.error_description || d.msg)) || String(d || '');
+  if (m.includes('FORBIDDEN')) return '権限がありません';
+  if (m.includes('CANNOT_DEMOTE_SELF')) return '自分の管理者権限は外せません';
+  if (m.includes('CANNOT_BAN_SELF')) return '自分自身は停止できません';
+  if (m.includes('CANNOT_BAN_ADMIN')) return '管理者は停止できません';
+  if (m.includes('BAD_ROLE')) return '不正な権限です';
+  if (m.includes('Invalid login credentials')) return 'メールアドレスかパスワードが違います';
+  return m || '不明なエラー';
+}
+
+/* ---------- 表示ヘルパー ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const n = v => Number(v ?? 0).toLocaleString('ja-JP');
+
+function fmtDate(iso){
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const p = x => String(x).padStart(2,'0');
+  return `${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function fmtDay(iso){
+  const d = new Date(iso);
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+let toastTimer = null;
+function toast(msg){
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.remove(), 3200);
+}
+
+/** ブラウザ標準の confirm はアプリ内ブラウザで無効な場合があるため自前で出す */
+function confirmDialog({ title, body, okLabel = '実行する', danger = false }){
+  return new Promise(resolve => {
+    const scrim = document.createElement('div');
+    scrim.className = 'scrim';
+    scrim.innerHTML = `<div class="dialog" role="dialog" aria-modal="true">
+      <h3>${esc(title)}</h3><p>${esc(body)}</p>
+      <div class="row">
+        <button class="btn" data-no>キャンセル</button>
+        <button class="btn ${danger ? 'danger' : 'primary'}" data-yes>${esc(okLabel)}</button>
+      </div></div>`;
+    const close = v => { scrim.remove(); resolve(v); };
+    scrim.querySelector('[data-no]').onclick = () => close(false);
+    scrim.querySelector('[data-yes]').onclick = () => close(true);
+    scrim.onclick = e => { if (e.target === scrim) close(false); };
+    document.body.appendChild(scrim);
+    scrim.querySelector('[data-yes]').focus();
+  });
+}
+
+/* =====================================================================
+   折れ線（日別推移）。1本の系列につき1つの図にして、軸は1本だけ持つ。
+   ===================================================================== */
+function lineChart(el, rows, key, label, color){
+  const W = 520, H = 140, L = 34, R = 10, T = 12, B = 22;
+  const pts = rows.map(r => Number(r[key] || 0));
+  const max = Math.max(1, ...pts);
+  const stepX = (W - L - R) / Math.max(1, pts.length - 1);
+  const x = i => L + i * stepX;
+  const y = v => T + (H - T - B) * (1 - v / max);
+
+  const line = pts.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const area = `${line} L${x(pts.length - 1).toFixed(1)},${y(0)} L${x(0).toFixed(1)},${y(0)} Z`;
+  const gid = 'g' + key;
+
+  const ticks = [0, max].map(v =>
+    `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/>
+     <text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10" fill="var(--inkMuted)">${v}</text>`).join('');
+
+  const xlabels = [0, Math.floor(pts.length / 2), pts.length - 1].map(i =>
+    `<text x="${x(i)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === pts.length - 1 ? 'end' : 'middle'}"
+       font-size="10" fill="var(--inkMuted)">${fmtDay(rows[i].d)}</text>`).join('');
+
+  const last = pts.length - 1;
+  el.innerHTML = `
+    <h3>${esc(label)}</h3>
+    <div class="read" data-read>直近30日 · 合計 ${n(pts.reduce((a,b)=>a+b,0))}</div>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}の直近30日の推移">
+      <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity=".22"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient></defs>
+      ${ticks}
+      <path d="${area}" fill="url(#${gid})"/>
+      <path d="${line}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${x(last)}" cy="${y(pts[last])}" r="3.5" fill="${color}"/>
+      <circle data-dot cx="${x(last)}" cy="${y(pts[last])}" r="4.5" fill="none" stroke="${color}" stroke-width="2" opacity="0"/>
+      <rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent" data-hit/>
+      ${xlabels}
+    </svg>`;
+
+  // 触れた日の数値を出す
+  const svg = el.querySelector('svg');
+  const read = el.querySelector('[data-read]');
+  const dot = el.querySelector('[data-dot]');
+  const base = read.textContent;
+  const hit = el.querySelector('[data-hit]');
+  const at = e => {
+    const box = svg.getBoundingClientRect();
+    const px = ((e.clientX ?? e.touches?.[0]?.clientX) - box.left) / box.width * W;
+    const i = Math.max(0, Math.min(pts.length - 1, Math.round((px - L) / stepX)));
+    read.textContent = `${fmtDay(rows[i].d)} · ${n(pts[i])}`;
+    dot.setAttribute('cx', x(i)); dot.setAttribute('cy', y(pts[i])); dot.setAttribute('opacity', '1');
+  };
+  hit.addEventListener('mousemove', at);
+  hit.addEventListener('touchmove', at, { passive:true });
+  const reset = () => { read.textContent = base; dot.setAttribute('opacity','0'); };
+  hit.addEventListener('mouseleave', reset);
+  hit.addEventListener('touchend', reset);
+}
+
+/* =====================================================================
+   各タブの描画
+   ===================================================================== */
+async function loadStats(){
+  const s = await rpc('admin_stats');
+  const kpi = (k, v, d, alert) =>
+    `<div class="kpi${alert ? ' alert' : ''}"><div class="k">${esc(k)}</div>
+     <div class="v num">${n(v)}</div><div class="d">${esc(d || '')}</div></div>`;
+  $('kpis').innerHTML =
+    kpi('ユーザー', s.users_total, `7日で +${n(s.users_7d)}`) +
+    kpi('投稿', s.posts_total, `7日で +${n(s.posts_7d)}`) +
+    kpi('プレミアム会員', s.premium_total, s.users_total ? `全体の ${Math.round(s.premium_total / s.users_total * 100)}%` : '') +
+    kpi('未対応の通報', s.reports_open, `通報 ${n(s.reports_total)}件中`, s.reports_open > 0) +
+    kpi('非表示の投稿', s.posts_hidden, '') +
+    kpi('利用停止中', s.banned_total, '');
+
+  const charts = $('charts');
+  charts.innerHTML = '<div class="chartbox" id="c1"></div><div class="chartbox" id="c2"></div>';
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  lineChart($('c1'), s.daily, 'posts', '日別の投稿数', accent);
+  lineChart($('c2'), s.daily, 'users', '日別の新規ユーザー', accent);
+
+  $('topSeries').innerHTML = (s.top_series || []).length
+    ? s.top_series.map(t => `<tr><td>${esc(t.name)}</td><td class="num">${n(t.posts)}</td>
+        <td class="num">${n(t.searches)}</td></tr>`).join('')
+    : '<tr><td colspan="3" class="muted">まだ作品名つきの投稿がありません</td></tr>';
+}
+
+async function loadReports(){
+  const rows = await rpc('admin_reports', { p_limit: 100 });
+  const box = $('reports');
+  if (!rows.length){ box.innerHTML = '<div class="empty">通報された投稿はありません</div>'; return; }
+  box.innerHTML = rows.map(r => `
+    <div class="report" data-sighting="${esc(r.sighting_id)}">
+      ${r.photo_path
+        ? `<img class="thumb" src="${PHOTO_BASE}${esc(r.photo_path)}" alt="">`
+        : `<div class="thumb none">写真なし</div>`}
+      <div class="body">
+        <div class="title">${esc(r.item_name)}
+          ${r.is_hidden ? '<span class="pill hidden">非表示中</span>' : '<span class="pill ok">公開中</span>'}
+        </div>
+        <div class="muted">${esc(r.series_name || '作品名なし')} · ${esc(r.shop_name)}</div>
+        <div class="muted">通報 ${n(r.report_count)}件（${esc(r.reasons || '理由なし')}） · 最終 ${fmtDate(r.last_reported_at)}</div>
+        <div class="muted">投稿者 ${esc(r.author_nickname || '—')} <span class="mono">${esc(r.author_id)}</span></div>
+        <div class="actions">
+          ${r.is_hidden
+            ? `<button class="btn sm" data-act="show">表示に戻す</button>`
+            : `<button class="btn sm" data-act="hide">非表示にする</button>`}
+          <button class="btn sm danger" data-act="delete">削除</button>
+          <button class="btn sm" data-act="banuser" data-user="${esc(r.author_id)}">投稿者を停止</button>
+        </div>
+      </div>
+    </div>`).join('');
+
+  box.querySelectorAll('[data-act]').forEach(b => b.onclick = () => reportAction(b));
+}
+
+async function reportAction(btn){
+  const wrap = btn.closest('[data-sighting]');
+  const id = wrap.dataset.sighting;
+  const act = btn.dataset.act;
+  try {
+    if (act === 'hide' || act === 'show'){
+      await rpc('admin_set_hidden', { p_sighting: id, p_hidden: act === 'hide' });
+      toast(act === 'hide' ? '非表示にしました' : '表示に戻しました');
+    } else if (act === 'delete'){
+      const ok = await confirmDialog({
+        title:'この投稿を削除しますか？', danger:true, okLabel:'削除する',
+        body:'投稿と写真が完全に消えます。元に戻せません。'
+      });
+      if (!ok) return;
+      const path = await rpc('admin_delete_sighting', { p_sighting: id });
+      await deletePhoto(path);
+      toast('削除しました');
+    } else if (act === 'banuser'){
+      const ok = await confirmDialog({
+        title:'投稿者を30日停止しますか？', danger:true, okLabel:'停止する',
+        body:'停止中は投稿と投票ができなくなり、その人の投稿はすべて非表示になります。'
+      });
+      if (!ok) return;
+      await rpc('admin_ban_user', { p_user: btn.dataset.user, p_days: 30, p_reason: '通報対応', p_hide_posts: true });
+      toast('30日間の停止にしました');
+    }
+    await loadReports();
+    if (currentTab === 'stats') await loadStats();
+  } catch (e){ toast(e.message); }
+}
+
+async function loadUsers(){
+  const q = $('userQuery').value.trim();
+  const rows = await rpc('admin_find_users', { p_query: q || null, p_limit: 100 });
+  const tb = $('users');
+  if (!rows.length){ tb.innerHTML = '<tr><td colspan="5" class="muted">該当するユーザーがいません</td></tr>'; return; }
+  tb.innerHTML = rows.map(u => {
+    const banned = u.banned_until && new Date(u.banned_until) > new Date();
+    const badges = [
+      u.role === 'admin' ? '<span class="pill admin">管理者</span>' : '',
+      u.role === 'moderator' ? '<span class="pill mod">モデレーター</span>' : '',
+      u.is_premium ? '<span class="pill premium">プレミアム</span>' : '',
+      banned ? `<span class="pill ban">停止 ${fmtDate(u.banned_until)}まで</span>` : '',
+      u.hidden_count > 0 ? `<span class="pill hidden">非表示 ${u.hidden_count}</span>` : ''
+    ].filter(Boolean).join(' ') || '<span class="muted">—</span>';
+    return `<tr data-user="${esc(u.id)}">
+      <td>
+        <div style="font-weight:600">${esc(u.nickname || '—')}</div>
+        <div class="muted">${esc(u.email || '未登録')}${u.providers ? ' · ' + esc(u.providers) : ''}</div>
+        <div class="mono muted">${esc(u.id)}</div>
+      </td>
+      <td>${badges}</td>
+      <td class="num">${n(u.post_count)}</td>
+      <td class="num">${n(u.points_total)}</td>
+      <td><div class="rowactions">
+        <button class="btn sm" data-u="role">権限</button>
+        <button class="btn sm" data-u="premium">プレミアム</button>
+        <button class="btn sm ${banned ? '' : 'danger'}" data-u="ban">${banned ? '停止を解除' : '停止'}</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+  tb.querySelectorAll('[data-u]').forEach(b => b.onclick = () => userAction(b));
+}
+
+async function userAction(btn){
+  const id = btn.closest('[data-user]').dataset.user;
+  const kind = btn.dataset.u;
+  try {
+    if (kind === 'role'){
+      const role = await pick('権限を選んでください', [
+        ['user','一般ユーザーに戻す'], ['moderator','モデレーター（通報対応のみ）'], ['admin','管理者（すべて可能）']
+      ]);
+      if (!role) return;
+      await rpc('admin_set_role', { p_user: id, p_role: role });
+      toast('権限を変更しました');
+    } else if (kind === 'premium'){
+      const days = await pick('プレミアムを付与しますか？', [
+        ['30','30日間'], ['365','1年間'], ['0','解除する']
+      ]);
+      if (days === null) return;
+      await rpc('admin_set_premium', { p_user: id, p_days: Number(days) });
+      toast(days === '0' ? 'プレミアムを解除しました' : 'プレミアムを付与しました');
+    } else if (kind === 'ban'){
+      const days = await pick('利用停止の期間を選んでください', [
+        ['7','7日間'], ['30','30日間'], ['36500','無期限'], ['0','停止を解除する']
+      ]);
+      if (days === null) return;
+      await rpc('admin_ban_user', { p_user: id, p_days: Number(days), p_reason: '管理者による対応', p_hide_posts: Number(days) > 0 });
+      toast(days === '0' ? '停止を解除しました' : '利用を停止しました');
+    }
+    await loadUsers();
+  } catch (e){ toast(e.message); }
+}
+
+/** 選択肢ダイアログ。キャンセルは null を返す */
+function pick(title, options){
+  return new Promise(resolve => {
+    const scrim = document.createElement('div');
+    scrim.className = 'scrim';
+    scrim.innerHTML = `<div class="dialog" role="dialog" aria-modal="true">
+      <h3>${esc(title)}</h3>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${options.map(([v,l]) => `<button class="btn" style="justify-content:center" data-v="${esc(v)}">${esc(l)}</button>`).join('')}
+      </div>
+      <div class="row"><button class="btn" data-no>キャンセル</button></div></div>`;
+    const close = v => { scrim.remove(); resolve(v); };
+    scrim.querySelectorAll('[data-v]').forEach(b => b.onclick = () => close(b.dataset.v));
+    scrim.querySelector('[data-no]').onclick = () => close(null);
+    scrim.onclick = e => { if (e.target === scrim) close(null); };
+    document.body.appendChild(scrim);
+  });
+}
+
+async function loadLog(){
+  const rows = await rpc('admin_recent_actions', { p_limit: 100 });
+  const names = { set_role:'権限変更', grant_premium:'プレミアム付与', revoke_premium:'プレミアム解除',
+    ban:'利用停止', unban:'停止解除', hide_post:'投稿を非表示', unhide_post:'投稿を表示', delete_post:'投稿を削除' };
+  $('log').innerHTML = rows.length ? rows.map(r => `<tr>
+      <td class="num">${fmtDate(r.created_at)}</td>
+      <td>${esc(r.actor_nickname || '—')}</td>
+      <td>${esc(names[r.action] || r.action)}</td>
+      <td>${esc(r.target_nickname || '')}<div class="mono muted">${esc(r.target_user || r.target_id || '')}</div></td>
+      <td class="mono muted">${esc(r.detail ? JSON.stringify(r.detail) : '')}</td>
+    </tr>`).join('')
+    : '<tr><td colspan="5" class="muted">まだ操作はありません</td></tr>';
+}
+
+/* ---------- タブ ---------- */
+let currentTab = 'stats';
+const loaders = { stats: loadStats, reports: loadReports, users: loadUsers, log: loadLog };
+
+async function showTab(name){
+  currentTab = name;
+  document.querySelectorAll('#tabs button').forEach(b =>
+    b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+  ['stats','reports','users','log'].forEach(t => { $('tab-' + t).hidden = (t !== name); });
+  try { await loaders[name](); } catch (e){ toast(e.message); }
+}
+
+/* ---------- 起動 ---------- */
+async function enterApp(){
+  myRole = await rpc('my_role');
+  if (myRole !== 'admin' && myRole !== 'moderator'){
+    saveSession(null);
+    showLogin('このアカウントには管理者権限がありません。');
+    return;
+  }
+  $('login').hidden = true;
+  $('app').hidden = false;
+  $('who').textContent = `${session.email} · ${myRole === 'admin' ? '管理者' : 'モデレーター'}`;
+  await showTab('stats');
+}
+
+function showLogin(msg){
+  $('app').hidden = true;
+  $('login').hidden = false;
+  const e = $('loginErr');
+  if (msg){ e.textContent = msg; e.hidden = false; } else { e.hidden = true; }
+}
+
+$('loginBtn').onclick = async () => {
+  const btn = $('loginBtn');
+  btn.disabled = true;
+  $('loginErr').hidden = true;
+  try {
+    await signIn($('email').value.trim(), $('password').value);
+    $('password').value = '';
+    await enterApp();
+  } catch (e){
+    showLogin(jpError(e));
+  } finally { btn.disabled = false; }
+};
+$('password').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
+$('logoutBtn').onclick = () => { saveSession(null); showLogin(); };
+$('reloadBtn').onclick = () => showTab(currentTab);
+$('userSearch').onclick = () => loadUsers().catch(e => toast(e.message));
+$('userQuery').addEventListener('keydown', e => { if (e.key === 'Enter') $('userSearch').click(); });
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+
+loadSession();
+if (session) enterApp().catch(() => { saveSession(null); showLogin(); });
+else showLogin();
+</script>
+</body>
+</html>
