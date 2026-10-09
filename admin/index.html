@@ -121,6 +121,19 @@ h2 .sub{font-weight:400;font-size:12px;color:var(--inkMuted);margin-left:8px}
 .chartbox{padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
 .chartbox h3{font-size:12.5px;font-weight:700;margin-bottom:2px}
 .chartbox .read{font-size:11.5px;color:var(--inkMuted);min-height:18px}
+/* 内訳バー */
+.breaks{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:18px}
+.break{padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.break h3{font-size:12.5px;font-weight:700;margin-bottom:10px}
+.bar{display:grid;grid-template-columns:92px 1fr 44px;align-items:center;gap:8px;margin-bottom:6px}
+.bar .bl{font-size:11.5px;color:var(--inkSub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .bt{height:8px;background:var(--soft);border-radius:999px;overflow:hidden}
+.bar .bf{height:100%;background:var(--accent);border-radius:999px}
+.bar .bn{font-size:11.5px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+.hours{display:flex;align-items:flex-end;gap:2px;height:72px;margin-top:4px}
+.hours .hb{flex:1;background:var(--accentSoft);border-radius:2px 2px 0 0;min-height:2px}
+.hours .hb.on{background:var(--accent)}
+.hourx{display:flex;justify-content:space-between;font-size:10px;color:var(--inkMuted);margin-top:4px}
 svg{display:block;width:100%;height:auto;touch-action:none}
 .links{display:flex;flex-wrap:wrap;gap:8px}
 .links a{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:8px;
@@ -205,6 +218,15 @@ tr:last-child td{border-bottom:none}
         <table><thead><tr><th>作品</th><th class="num">投稿</th><th class="num">検索</th></tr></thead>
         <tbody id="topSeries"></tbody></table>
       </div>
+      <h2>投稿の内訳 <span class="sub">どんな投稿が集まっているか</span></h2>
+      <div class="breaks" id="breaks"></div>
+
+      <h2>よく投稿している人 <span class="sub">投稿数の多い順</span></h2>
+      <div class="tablewrap" style="margin-bottom:18px">
+        <table><thead><tr><th>ニックネーム</th><th class="num">投稿</th></tr></thead>
+        <tbody id="topPosters"></tbody></table>
+      </div>
+
       <h2>外部サービス <span class="sub">ダウンロード数・広告・課金はこちら</span></h2>
       <div class="links">
         <a href="https://play.google.com/console" target="_blank" rel="noopener">Google Play Console</a>
@@ -448,24 +470,83 @@ function lineChart(el, rows, key, label, color){
 /* =====================================================================
    各タブの描画
    ===================================================================== */
+const LABELS = {
+  category: { gacha:'ガチャ', goods:'グッズ', kuji:'くじ', prize:'プライズ', other:'その他' },
+  shop_type:{ gacha_spot:'ガチャ専門店', game_center:'ゲームセンター', convenience:'コンビニ',
+              bookstore:'書店', electronics:'家電量販店', mall:'ショッピングモール',
+              specialty:'専門店', station:'駅' },
+  stock:    { plenty:'たくさん', few:'残りわずか', soldout:'売り切れ', unknown:'不明' },
+};
+const lab = (dict, k) => (dict && dict[k]) || k || '不明';
+
+/** 横棒の内訳ブロック */
+function breakBlock(title, rows, dict){
+  const list = rows || [];
+  const max = Math.max(1, ...list.map(r => r.n));
+  const body = list.length
+    ? list.map(r => `<div class="bar">
+        <div class="bl" title="${esc(lab(dict, r.k))}">${esc(lab(dict, r.k))}</div>
+        <div class="bt"><div class="bf" style="width:${Math.round(r.n / max * 100)}%"></div></div>
+        <div class="bn">${n(r.n)}</div></div>`).join('')
+    : '<div class="muted">まだデータがありません</div>';
+  return `<div class="break"><h3>${esc(title)}</h3>${body}</div>`;
+}
+
+/** 時間帯ヒストグラム（JST） */
+function hourBlock(rows){
+  const list = rows || [];
+  const max = Math.max(1, ...list.map(r => r.n));
+  const bars = list.map(r =>
+    `<div class="hb${r.n === max && r.n > 0 ? ' on' : ''}" style="height:${Math.round(r.n / max * 100)}%"
+      title="${r.k}時 · ${n(r.n)}件"></div>`).join('');
+  return `<div class="break"><h3>投稿された時間帯</h3>
+    <div class="hours">${bars}</div>
+    <div class="hourx"><span>0時</span><span>6時</span><span>12時</span><span>18時</span><span>23時</span></div></div>`;
+}
+
 async function loadStats(){
-  const s = await rpc('admin_stats');
+  const [s, x] = await Promise.all([rpc('admin_stats'), rpc('admin_stats2')]);
+
   const kpi = (k, v, d, alert) =>
     `<div class="kpi${alert ? ' alert' : ''}"><div class="k">${esc(k)}</div>
      <div class="v num">${n(v)}</div><div class="d">${esc(d || '')}</div></div>`;
+  const pct = (a, b) => b ? `${Math.round(a / b * 100)}%` : '';
+
   $('kpis').innerHTML =
     kpi('ユーザー', s.users_total, `7日で +${n(s.users_7d)}`) +
+    kpi('アクティブ', x.active_7d, `直近7日 · 30日で ${n(x.active_30d)}人`) +
     kpi('投稿', s.posts_total, `7日で +${n(s.posts_7d)}`) +
-    kpi('プレミアム会員', s.premium_total, s.users_total ? `全体の ${Math.round(s.premium_total / s.users_total * 100)}%` : '') +
+    kpi('投稿した人', x.posters_total, `うち2回以上 ${n(x.repeat_posters)}人`) +
+    kpi('プレミアム会員', s.premium_total, s.users_total ? `全体の ${pct(s.premium_total, s.users_total)}` : '') +
+    kpi('写真つき投稿', x.posts_with_photo, s.posts_total ? `全体の ${pct(x.posts_with_photo, s.posts_total)}` : '') +
+    kpi('鮮度の投票', (x.votes_still || 0) + (x.votes_gone || 0),
+        `まだある ${n(x.votes_still)} / なくなった ${n(x.votes_gone)}`) +
+    kpi('お気に入り', s.favorites_total, '') +
     kpi('未対応の通報', s.reports_open, `通報 ${n(s.reports_total)}件中`, s.reports_open > 0) +
     kpi('非表示の投稿', s.posts_hidden, '') +
     kpi('利用停止中', s.banned_total, '');
 
   const charts = $('charts');
-  charts.innerHTML = '<div class="chartbox" id="c1"></div><div class="chartbox" id="c2"></div>';
+  charts.innerHTML = '<div class="chartbox" id="c1"></div><div class="chartbox" id="c2"></div>' +
+                     '<div class="chartbox" id="c3"></div><div class="chartbox" id="c4"></div>';
   const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-  lineChart($('c1'), s.daily, 'posts', '日別の投稿数', accent);
-  lineChart($('c2'), s.daily, 'users', '日別の新規ユーザー', accent);
+  const d30 = (x.daily || []).slice(-30);
+  lineChart($('c1'), d30, 'posts', '日別の投稿数', accent);
+  lineChart($('c2'), d30, 'users', '日別の新規ユーザー', accent);
+  lineChart($('c3'), d30, 'favs',  '日別のお気に入り', accent);
+  lineChart($('c4'), d30, 'votes', '日別の鮮度投票', accent);
+
+  $('breaks').innerHTML =
+    breakBlock('カテゴリ別',   x.by_category,  LABELS.category) +
+    breakBlock('お店の種類別', x.by_shop_type, LABELS.shop_type) +
+    breakBlock('在庫状況別',   x.by_stock,     LABELS.stock) +
+    breakBlock('都道府県別',   x.by_pref,      null) +
+    hourBlock(x.by_hour);
+
+  $('topPosters').innerHTML = (x.top_posters || []).length
+    ? x.top_posters.map(t => `<tr><td>${esc(t.name || '(名前なし)')}${t.premium
+        ? ' <span class="pill">プレミアム</span>' : ''}</td><td class="num">${n(t.posts)}</td></tr>`).join('')
+    : '<tr><td colspan="2" class="muted">まだ投稿がありません</td></tr>';
 
   $('topSeries').innerHTML = (s.top_series || []).length
     ? s.top_series.map(t => `<tr><td>${esc(t.name)}</td><td class="num">${n(t.posts)}</td>
