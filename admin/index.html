@@ -204,6 +204,7 @@ tr:last-child td{border-bottom:none}
       <button role="tab" data-tab="stats" aria-selected="true">統計</button>
       <button role="tab" data-tab="reports" aria-selected="false">通報</button>
       <button role="tab" data-tab="users" aria-selected="false">ユーザー</button>
+      <button role="tab" data-tab="groups" aria-selected="false">グループ</button>
       <button role="tab" data-tab="log" aria-selected="false">操作ログ</button>
     </nav>
   </div>
@@ -253,9 +254,28 @@ tr:last-child td{border-bottom:none}
       <div class="tablewrap">
         <table>
           <thead><tr>
-            <th>ユーザー</th><th>状態</th><th class="num">投稿</th><th class="num">pt</th><th>操作</th>
+            <th>ユーザー</th><th>状態</th><th class="num">投稿</th><th>グループ</th><th class="num">pt</th><th>操作</th>
           </tr></thead>
           <tbody id="users"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- グループ -->
+    <section id="tab-groups" hidden>
+      <div class="kpis" id="groupKpis"></div>
+      <h2>グループ <span class="sub">招待コードは表示しません</span></h2>
+      <div class="searchrow">
+        <input class="input" id="groupQuery" placeholder="グループ名・作成者のニックネーム・ID で検索（空欄で新しい順）">
+        <button class="btn" id="groupSearch">検索</button>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th>グループ</th><th>作成者</th><th class="num">人数</th><th class="num">投稿</th>
+            <th>最終投稿</th><th>作成日</th><th>操作</th>
+          </tr></thead>
+          <tbody id="groups"></tbody>
         </table>
       </div>
     </section>
@@ -616,9 +636,9 @@ async function reportAction(btn){
 
 async function loadUsers(){
   const q = $('userQuery').value.trim();
-  const rows = await rpc('admin_find_users', { p_query: q || null, p_limit: 100 });
+  const rows = await rpc('admin_find_users2', { p_query: q || null, p_limit: 100 });
   const tb = $('users');
-  if (!rows.length){ tb.innerHTML = '<tr><td colspan="5" class="muted">該当するユーザーがいません</td></tr>'; return; }
+  if (!rows.length){ tb.innerHTML = '<tr><td colspan="6" class="muted">該当するユーザーがいません</td></tr>'; return; }
   tb.innerHTML = rows.map(u => {
     const banned = u.banned_until && new Date(u.banned_until) > new Date();
     const badges = [
@@ -635,7 +655,12 @@ async function loadUsers(){
         <div class="mono muted">${esc(u.id)}</div>
       </td>
       <td>${badges}</td>
-      <td class="num">${n(u.post_count)}</td>
+      <td class="num">${n(u.post_count)}${u.group_post_count
+        ? `<div class="muted">うちグループ ${n(u.group_post_count)}</div>` : ''}</td>
+      <td>${u.groups_owned || u.groups_joined
+        ? `<div>作成 ${n(u.groups_owned)} · 参加 ${n(u.groups_joined)}</div>
+           ${u.groups_owned ? `<button class="btn sm" data-u="groups" style="margin-top:4px">作成したグループ</button>` : ''}`
+        : '<span class="muted">—</span>'}</td>
       <td class="num">${n(u.points_total)}</td>
       <td><div class="rowactions">
         <button class="btn sm" data-u="role">権限</button>
@@ -650,6 +675,10 @@ async function loadUsers(){
 async function userAction(btn){
   const id = btn.closest('[data-user]').dataset.user;
   const kind = btn.dataset.u;
+  if (kind === 'groups'){
+    $('groupQuery').value = id;
+    return showTab('groups');
+  }
   try {
     if (kind === 'role'){
       const role = await pick('権限を選んでください', [
@@ -696,6 +725,64 @@ function pick(title, options){
   });
 }
 
+async function loadGroups(){
+  const q = $('groupQuery').value.trim();
+  const [s, rows] = await Promise.all([
+    rpc('admin_group_stats'),
+    rpc('admin_groups', { p_query: q || null, p_limit: 200 })
+  ]);
+  const kpi = (k, v, d) => `<div class="kpi"><div class="k">${esc(k)}</div>
+     <div class="v num">${n(v)}</div><div class="d">${esc(d || '')}</div></div>`;
+  $('groupKpis').innerHTML =
+    kpi('グループ', s.groups_total, `7日で +${n(s.groups_7d)}`) +
+    kpi('グループに入っている人', s.users_in_groups, `参加の延べ数 ${n(s.memberships_total)}`) +
+    kpi('グループ内の投稿', s.posts_total, `7日で +${n(s.posts_7d)}`) +
+    kpi('動いているグループ', s.active_groups_30d, '直近30日に投稿があった数');
+
+  const tb = $('groups');
+  if (!rows.length){ tb.innerHTML = '<tr><td colspan="7" class="muted">該当するグループがありません</td></tr>'; return; }
+  tb.innerHTML = rows.map(g => `<tr data-group="${esc(g.id)}" data-name="${esc(g.name)}">
+      <td>
+        <div style="font-weight:600">${esc(g.name)}</div>
+        <div class="muted">${[g.has_icon ? 'アイコンあり' : '', g.has_bg ? '背景あり' : ''].filter(Boolean).join(' · ')}</div>
+        <div class="mono muted">${esc(g.id)}</div>
+      </td>
+      <td>${esc(g.owner_nickname || '—')}<div class="mono muted">${esc(g.owner_id)}</div></td>
+      <td class="num">${n(g.member_count)}</td>
+      <td class="num">${n(g.post_count)}${g.hidden_count
+        ? `<div><span class="pill hidden">非表示 ${n(g.hidden_count)}</span></div>` : ''}</td>
+      <td class="num">${g.last_post_at ? fmtDate(g.last_post_at) : '—'}</td>
+      <td class="num">${fmtDate(g.created_at)}</td>
+      <td><button class="btn sm" data-members>メンバー</button></td>
+    </tr>`).join('');
+  tb.querySelectorAll('[data-members]').forEach(b => b.onclick = () => {
+    const tr = b.closest('[data-group]');
+    showMembers(tr.dataset.group, tr.dataset.name).catch(e => toast(e.message));
+  });
+}
+
+/** グループのメンバー一覧をダイアログで出す */
+async function showMembers(groupId, name){
+  const rows = await rpc('admin_group_members', { p_group: groupId });
+  const scrim = document.createElement('div');
+  scrim.className = 'scrim';
+  scrim.innerHTML = `<div class="dialog" role="dialog" aria-modal="true" style="max-width:520px">
+    <h3>${esc(name)} のメンバー（${n(rows.length)}人）</h3>
+    <div class="tablewrap" style="max-height:60vh;overflow:auto">
+      <table><thead><tr><th>ニックネーム</th><th>立場</th><th class="num">投稿</th><th>参加日</th></tr></thead>
+      <tbody>${rows.map(m => `<tr>
+        <td>${esc(m.nickname || '—')}<div class="mono muted">${esc(m.user_id)}</div></td>
+        <td>${m.role === 'owner' ? '<span class="pill admin">作成者</span>' : 'メンバー'}</td>
+        <td class="num">${n(m.post_count)}</td>
+        <td class="num">${fmtDate(m.joined_at)}</td></tr>`).join('')}</tbody></table>
+    </div>
+    <div class="row"><button class="btn" data-no>閉じる</button></div></div>`;
+  const close = () => scrim.remove();
+  scrim.querySelector('[data-no]').onclick = close;
+  scrim.onclick = e => { if (e.target === scrim) close(); };
+  document.body.appendChild(scrim);
+}
+
 async function loadLog(){
   const rows = await rpc('admin_recent_actions', { p_limit: 100 });
   const names = { set_role:'権限変更', grant_premium:'プレミアム付与', revoke_premium:'プレミアム解除',
@@ -712,13 +799,13 @@ async function loadLog(){
 
 /* ---------- タブ ---------- */
 let currentTab = 'stats';
-const loaders = { stats: loadStats, reports: loadReports, users: loadUsers, log: loadLog };
+const loaders = { stats: loadStats, reports: loadReports, users: loadUsers, groups: loadGroups, log: loadLog };
 
 async function showTab(name){
   currentTab = name;
   document.querySelectorAll('#tabs button').forEach(b =>
     b.setAttribute('aria-selected', String(b.dataset.tab === name)));
-  ['stats','reports','users','log'].forEach(t => { $('tab-' + t).hidden = (t !== name); });
+  ['stats','reports','users','groups','log'].forEach(t => { $('tab-' + t).hidden = (t !== name); });
   try { await loaders[name](); } catch (e){ toast(e.message); }
 }
 
@@ -760,6 +847,8 @@ $('logoutBtn').onclick = () => { saveSession(null); showLogin(); };
 $('reloadBtn').onclick = () => showTab(currentTab);
 $('userSearch').onclick = () => loadUsers().catch(e => toast(e.message));
 $('userQuery').addEventListener('keydown', e => { if (e.key === 'Enter') $('userSearch').click(); });
+$('groupSearch').onclick = () => loadGroups().catch(e => toast(e.message));
+$('groupQuery').addEventListener('keydown', e => { if (e.key === 'Enter') $('groupSearch').click(); });
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 
 loadSession();
